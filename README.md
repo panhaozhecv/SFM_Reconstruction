@@ -33,11 +33,9 @@ make -j4
 
 ### Run
 
-- Edit configure file in ./config/config.toml, the explaination of config.toml is as follows:
+- Edit configure file in ./config/config.toml, the explanation of config.toml is as follows:
 
-​	**project_folder:** Folder of a reconstruction task.There should be a folder names "color" in this folder.And the name of image                 
-
-​                                 should be organized as %04.jpg and **starts from 0001.jpg**.
+​	**project_folder:** Folder of a reconstruction task.There should be a folder names "color"  which stores images in this folder.And      the name of image should be organized as %04.jpg and **starts from 0001.jpg**.
 
 ​    **fx,fy,cx,cy:** The intrinsic parameters of camera.I assume that all the cameras have the same intrinsic params.
 
@@ -51,12 +49,12 @@ make -j4
 ./run_sfm
 ```
 
-- I provide two group of test results in the folder ./test.
+- I provide with two group of test results in the folder ./test.
 
 
 
 ### Future Work
 
-- Improve **robustness**
+- Improve **robustness**.
 - **SPEED UP**.Now the speed of feature extracting and exhaustive matching is quite slow.I am considering use gpu as well as multi thread tricks in the future.
 
