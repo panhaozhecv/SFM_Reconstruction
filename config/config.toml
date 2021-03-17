@@ -1,0 +1,23 @@
+project_folder = "../test/chair"
+
+#num
+camNum = 5
+
+#camera intrinsic
+
+fx = 2890.3
+fy = 2875.3
+cx = 1816.5
+#cx = 1359.8
+cy = 1359.8
+#cy = 1816.5
+
+
+#camera distortion
+k1 = 0.0468
+k2 = -0.1719
+p1 = -0.0035
+p2 = 0.0049
+
+#sfm
+mainCamID = 0

@@ -1,0 +1,55 @@
+Determining if the pthread_create exist failed with the following output:
+Change Dir: /home/panhaozhe/code/C_MAKE/sfmReconstruction/build/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_bd979/fast"
+/usr/bin/make -f CMakeFiles/cmTC_bd979.dir/build.make CMakeFiles/cmTC_bd979.dir/build
+make[1]: 进入目录“/home/panhaozhe/code/C_MAKE/sfmReconstruction/build/CMakeFiles/CMakeTmp”
+Building CXX object CMakeFiles/cmTC_bd979.dir/CheckSymbolExists.cxx.o
+/usr/bin/c++     -o CMakeFiles/cmTC_bd979.dir/CheckSymbolExists.cxx.o -c /home/panhaozhe/code/C_MAKE/sfmReconstruction/build/CMakeFiles/CMakeTmp/CheckSymbolExists.cxx
+Linking CXX executable cmTC_bd979
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_bd979.dir/link.txt --verbose=1
+/usr/bin/c++       -rdynamic CMakeFiles/cmTC_bd979.dir/CheckSymbolExists.cxx.o  -o cmTC_bd979 
+CMakeFiles/cmTC_bd979.dir/CheckSymbolExists.cxx.o：在函数‘main’中：
+CheckSymbolExists.cxx:(.text+0x1b)：对‘pthread_create’未定义的引用
+collect2: error: ld returned 1 exit status
+CMakeFiles/cmTC_bd979.dir/build.make:97: recipe for target 'cmTC_bd979' failed
+make[1]: *** [cmTC_bd979] Error 1
+make[1]: 离开目录“/home/panhaozhe/code/C_MAKE/sfmReconstruction/build/CMakeFiles/CMakeTmp”
+Makefile:126: recipe for target 'cmTC_bd979/fast' failed
+make: *** [cmTC_bd979/fast] Error 2
+
+File /home/panhaozhe/code/C_MAKE/sfmReconstruction/build/CMakeFiles/CMakeTmp/CheckSymbolExists.cxx:
+/* */
+#include <pthread.h>
+
+int main(int argc, char** argv)
+{
+  (void)argv;
+#ifndef pthread_create
+  return ((int*)(&pthread_create))[argc];
+#else
+  (void)argc;
+  return 0;
+#endif
+}
+
+Determining if the function pthread_create exists in the pthreads failed with the following output:
+Change Dir: /home/panhaozhe/code/C_MAKE/sfmReconstruction/build/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_b45f2/fast"
+/usr/bin/make -f CMakeFiles/cmTC_b45f2.dir/build.make CMakeFiles/cmTC_b45f2.dir/build
+make[1]: 进入目录“/home/panhaozhe/code/C_MAKE/sfmReconstruction/build/CMakeFiles/CMakeTmp”
+Building CXX object CMakeFiles/cmTC_b45f2.dir/CheckFunctionExists.cxx.o
+/usr/bin/c++    -DCHECK_FUNCTION_EXISTS=pthread_create   -o CMakeFiles/cmTC_b45f2.dir/CheckFunctionExists.cxx.o -c /home/panhaozhe/code/C_MAKE/sfmReconstruction/build/CMakeFiles/CheckLibraryExists/CheckFunctionExists.cxx
+Linking CXX executable cmTC_b45f2
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_b45f2.dir/link.txt --verbose=1
+/usr/bin/c++   -DCHECK_FUNCTION_EXISTS=pthread_create    -rdynamic CMakeFiles/cmTC_b45f2.dir/CheckFunctionExists.cxx.o  -o cmTC_b45f2 -lpthreads 
+/usr/bin/ld: 找不到 -lpthreads
+collect2: error: ld returned 1 exit status
+CMakeFiles/cmTC_b45f2.dir/build.make:97: recipe for target 'cmTC_b45f2' failed
+make[1]: *** [cmTC_b45f2] Error 1
+make[1]: 离开目录“/home/panhaozhe/code/C_MAKE/sfmReconstruction/build/CMakeFiles/CMakeTmp”
+Makefile:126: recipe for target 'cmTC_b45f2/fast' failed
+make: *** [cmTC_b45f2/fast] Error 2
+
+
