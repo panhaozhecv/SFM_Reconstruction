@@ -14,6 +14,7 @@ std::string featPath;
 std::string plyFilePath;
 int camNum(0);
 int mainCamID = *tomlConfig->get_qualified_as<int>("mainCamID");
+bool useGPU = *tomlConfig->get_qualified_as<bool>("useGPU");
 
 int main() {
     projectPath = *tomlConfig->get_qualified_as<std::string>("project_folder");
@@ -48,7 +49,7 @@ int main() {
         std::string imgPath = picPath + std::string(tmpPath);
         std::cout << "Init View:" <<  imgPath << std::endl;
         cv::Mat tmpImg = cv::imread(imgPath);
-        camera::Ptr p_temp = std::make_shared<camera>(i, tmpImg);
+        camera::Ptr p_temp = std::make_shared<camera>(i, tmpImg, useGPU);
         p_temp->setIntrinsic(fx, fy, cx, cy);
         p_temp->setDistCoeffs(k1, k2, p1, p2);
         p_cams.push_back(p_temp);
@@ -57,21 +58,35 @@ int main() {
 
     std::cout << "****************Extract Features****************"  << std::endl;
     for(int i = 0; i < camNum; ++i) {
-        p_cams[i]->sfm_extract_feature_desc(0.02, 10);
+        p_cams[i]->sfm_extract_feature_desc(0.04, 10);
     }
     // 特征匹配
     matchEngine::Ptr p_matcher = std::make_shared<matchEngine>(mainCamID, camNum);
 
-    bool isInit = p_matcher->sfm_find_initial_pair(sfmDataMap, sfmDatas, p_cams, 0.6, 100);
+    std::vector<std::pair<int, int>> matchedNums;
+    for(int i = 0; i < p_cams.size(); ++i) {
+        if(p_cams[i]->id != mainCamID) {
+            matchedNums.push_back(std::make_pair(p_cams[i]->id, 0));
+        }
+    }
+    bool isInit = p_matcher->sfm_find_initial_pair_mul_thread(sfmDataMap, sfmDatas, p_cams, matchedNums, 0.6, 100);
+//    bool isInit = p_matcher->sfm_find_initial_pair(sfmDataMap, sfmDatas, p_cams, 0.6, 100);
+
     if(!isInit) {
         return -1;
     }
-    p_matcher->sfm_exhaustive_match(sfmDataMap, sfmDatas, p_cams, 0.4);
+//    p_matcher->sfm_exhaustive_match(sfmDataMap, sfmDatas, p_cams, 0.4);
+    p_matcher->sfm_exhaustive_match_mul_thread(sfmDataMap, sfmDatas, p_cams, 0.4);
 
 
     // 计算RT 重建
-    std::queue<int> addCamsSeq = p_matcher->getAddCamSequence();
+
     int secCam = p_matcher->getInitialPair().second;
+    std::queue<int> addCamsSeq;
+    for(int i = 0; i < p_cams.size(); ++i) {
+        if(i != mainCamID && i != secCam)
+            addCamsSeq.push(i);
+    }
     // 初始匹配对重建
     int numInliers(0);
     sfm_reconstruct_initial_pair(sfmDataMap, sfmDatas, numInliers, p_cams[mainCamID], p_cams[secCam]);

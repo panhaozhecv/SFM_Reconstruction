@@ -10,6 +10,7 @@
 #include <thread>
 #include <memory>
 #include <queue>
+#include <unordered_map>
 
 class ThreadManager {
 
@@ -29,6 +30,9 @@ public:
 
 
     void runFunction();
+
+    void refresh(const int& num);
+
 
 private:
     int numCores;

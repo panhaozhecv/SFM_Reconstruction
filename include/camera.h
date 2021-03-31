@@ -5,10 +5,15 @@
 #include <memory>
 #include <unordered_map>
 #include <fstream>
+#include <mutex>
+#include <unistd.h>
+#include <opencv4/opencv2/cudafeatures2d.hpp>
+#include <opencv4/opencv2/xfeatures2d/cuda.hpp>
 #include <opencv4/opencv2/opencv.hpp>
 #include <opencv4/opencv2/core.hpp>
 #include <opencv4/opencv2/highgui.hpp>
 #include <opencv4/opencv2/imgproc.hpp>
+#include <opencv4/opencv2/imgproc/types_c.h>
 #include <opencv4/opencv2/imgcodecs.hpp>
 #include <opencv4/opencv2/features2d.hpp>
 #include <opencv4/opencv2/xfeatures2d.hpp>
@@ -31,9 +36,19 @@ class camera {
     public:
         typedef std::shared_ptr<camera> Ptr;
 
-        camera(int _id, cv::Mat& _img):
+        camera(int _id, cv::Mat& _img, bool _useGPU):
             id(_id),
-            img(_img){}
+            img(_img),
+            isFinishedMatch(false),
+            isUseGpu(_useGPU){
+            if(isUseGpu) {
+                cv::Mat gray;
+                cv::cvtColor(img, gray, CV_BGR2GRAY);
+                imgGPU.upload(gray);
+                CV_Assert(!imgGPU.empty());
+            }
+
+        }
 
         ~camera() = default;
 
@@ -61,15 +76,24 @@ class camera {
         std::unordered_map<int, std::vector<int>> matchedPointIDs;
         std::unordered_map<int, cv::Mat> inlierIDs;
 
+        bool isFinishedMatch;
+        bool isUseGpu;
+
 
         int id;
         cv::Mat img;
         cv::Mat K;
         cv::Mat distCoeffs;
 
+
+        cv::cuda::GpuMat imgGPU;
+
+
+
         cv::Mat R;
         cv::Mat T;
         cv::Mat Extrinsic;
+
 
 
 
@@ -78,7 +102,13 @@ class camera {
 void thread_extract_feature_desc(camera::Ptr& p_cam, double contrastThreshold = 0.04, double edgeThreshold = 10);
 
 // 特征匹配
-int sfm_match_feature(std::multimap<std::string, cv::Vec2i>& sfmDataMap, std::vector<sfmData>& sfmDatas, camera::Ptr& src, camera::Ptr& dst,const double& ratio);
+int sfm_match_feature(std::multimap<std::string, cv::Vec2i>& sfmDataMap, std::vector<sfmData>& sfmDatas, camera::Ptr& src, camera::Ptr& dst, const double& ratio);
+
+
+int sfm_match_feature_mul_thread(std::multimap<std::string, cv::Vec2i>& sfmDataMap, std::vector<sfmData>& sfmDatas, std::unordered_map<std::string, bool>& matchList, camera::Ptr& src, camera::Ptr& dst, std::pair<int, int>& matchNum, std::mutex& lock, const double& ratio);
+
+
+void sfm_one_cam_match(std::multimap<std::string, cv::Vec2i>& sfmDataMap, std::vector<sfmData>& sfmDatas, std::unordered_map<std::string, bool>& matchList, std::vector<camera::Ptr>& p_cams, std::mutex& lock, const int& index, const double& ratio);
 
 // sfm_data添加映射二维点
 void sfm_data_add_2dPoint(sfmData& data, const int& id, const cv::Point2f& point);

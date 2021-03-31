@@ -6,8 +6,8 @@
 void  ThreadManager::runFunction() {
     int numFinished(0);
     std::vector<std::thread*> taskPool;
-    while(numFinished <= numTasks) {
-        while(numFinished <= numTasks && taskPool.size() <= numCores) {
+    while(numFinished < numTasks) {
+        while(numFinished < numTasks && taskPool.size() <= numCores && !taskQueue.empty()) {
             taskPool.push_back(taskQueue.front());
             taskQueue.pop();
         }
@@ -16,9 +16,16 @@ void  ThreadManager::runFunction() {
             numFinished += 1;
         }
         taskPool.clear();
-        while(!taskQueue.empty())
-            taskQueue.pop();
     }
-
+    while(!taskQueue.empty())
+        taskQueue.pop();
 }
+
+
+void ThreadManager::refresh(const int& num) {
+    while(!taskQueue.empty())
+        taskQueue.pop();
+    numTasks = num;
+}
+
 

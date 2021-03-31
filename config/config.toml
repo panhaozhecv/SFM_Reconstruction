@@ -21,3 +21,5 @@ p2 = 0.0049
 
 #sfm
 mainCamID = 0
+
+useGPU = true

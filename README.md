@@ -58,3 +58,12 @@ make -j4
 - Improve **robustness**.
 - **SPEED UP**.Now the speed of feature extracting and exhaustive matching is quite slow.I am considering use gpu as well as multi thread tricks in the future.
 
+
+
+### Change Log
+
+- **2021.3.31** **:** speed up the algorithm:
+
+  - **1.**use gpu to extract features. (I also tried use gpu for feature matching. However, it decrease the quality of reconstruction.So I only use it for feature extracting.)	
+
+  - **2.**try multithread tricks.I tried multithread tricks for feature extracting and matching, but only gained little profit. I think it's because of coarse-grained mutex. I need to learn more about multithread.

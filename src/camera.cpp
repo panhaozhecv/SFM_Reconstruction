@@ -5,8 +5,8 @@
 
 
 void thread_extract_feature_desc(camera::Ptr &p_cam, double contrastThreshold, double edgeThreshold) {
-    //p_cam->sfm_extract_feature_desc(contrastThreshold, edgeThreshold);
-    p_cam->test();
+    p_cam->sfm_extract_feature_desc(contrastThreshold, edgeThreshold);
+    //p_cam->test();
 }
 
 void sfm_reproj_3dpoints(camera::Ptr& pcam1, camera::Ptr& pcam2, const std::vector<cv::Point3f>& points) {
@@ -55,7 +55,6 @@ int search_sfm_data(const std::multimap<std::string, cv::Vec2i>& sfmDataMap, con
 }
 
 
-
 void sfm_data_add_2dPoint(sfmData& data, const int& id, const cv::Point2f& point) {
     if(data.containedViews.find(id) == data.containedViews.end()) {
         data.containedViews.insert(id);
@@ -63,17 +62,33 @@ void sfm_data_add_2dPoint(sfmData& data, const int& id, const cv::Point2f& point
     }
 }
 
-int sfm_match_feature(std::multimap<std::string, cv::Vec2i>& sfmDataMap, std::vector<sfmData>& sfmDatas, camera::Ptr& src, camera::Ptr& dst,const double& ratio) {
+int sfm_match_feature(std::multimap<std::string, cv::Vec2i>& sfmDataMap, std::vector<sfmData>& sfmDatas, camera::Ptr& src, camera::Ptr& dst, const double& ratio) {
+
     cv::FlannBasedMatcher matcher;
     std::vector<std::vector<cv::DMatch>> matchedPoints;
     std::vector<cv::DMatch> goodMatches;
-    std::vector<cv::Mat> train_desc(1, dst->descs);
-    matcher.add(train_desc);
-    matcher.train();
 
-    matcher.knnMatch(src->descs, matchedPoints, 2);
-    for(int i = 0; i < matchedPoints.size(); ++i) {
-        if(matchedPoints[i][0].distance < ratio * matchedPoints[i][1].distance) {
+    // CPU match
+   // if((!src->isUseGpu) && (!dst->isUseGpu)) {
+        std::vector<cv::Mat> train_desc(1, dst->descs);
+        matcher.add(train_desc);
+        matcher.train();
+
+        matcher.knnMatch(src->descs, matchedPoints, 2);
+
+   // }
+    // GPU match
+//    else {
+//        cv::Ptr<cv::cuda::DescriptorMatcher> GPUmatcher = cv::cuda::DescriptorMatcher::createBFMatcher();
+//        std::vector<cv::cuda::GpuMat> train_desc_GPU(1, dst->descsGPU);
+//        GPUmatcher->add(train_desc_GPU);
+//        GPUmatcher->train();
+//        GPUmatcher->knnMatch(src->descsGPU, matchedPoints, 2);
+//        src->surf.downloadKeypoints(src->featuresGPU, src->features);
+//        dst->surf.downloadKeypoints(dst->featuresGPU, dst->features);
+//    }
+    for (int i = 0; i < matchedPoints.size(); ++i) {
+        if (matchedPoints[i][0].distance < ratio * matchedPoints[i][1].distance) {
             goodMatches.push_back(matchedPoints[i][0]);
         }
     }
@@ -122,10 +137,57 @@ int sfm_match_feature(std::multimap<std::string, cv::Vec2i>& sfmDataMap, std::ve
             }
     }
     src->matchedPointIDs.insert(std::make_pair(dst->id, srcMatchedIDs));
-    dst->matchedPointIDs.insert(std::make_pair(src->id, dstMatchedIDs));
+    dst->matchedPointIDs.insert(std::make_pair(src->id, dstMatchedIDs));;
     return goodMatches.size();
 
 }
+
+int sfm_match_feature_mul_thread(std::multimap<std::string, cv::Vec2i>& sfmDataMap, std::vector<sfmData>& sfmDatas, std::unordered_map<std::string, bool>& matchList, camera::Ptr& src, camera::Ptr& dst, std::pair<int, int>& matchNum, std::mutex& lock, const double& ratio) {
+    if(matchNum.first != dst->id) {
+        matchNum.first = dst->id;
+    }
+    std::lock_guard<std::mutex> lockGuard(lock);
+    matchNum.second = sfm_match_feature(sfmDataMap, sfmDatas, src, dst, ratio);
+    std::string str = std::to_string(src->id) + "-" + std::to_string(dst->id);
+    matchList[str] = true;
+    str = std::to_string(dst->id) + "-" + std::to_string(src->id);
+    matchList[str] = true;
+
+    std::cout << "View " << src->id << "-" << dst->id << " Matched " << matchNum.second << " Points" << std::endl;
+}
+
+
+void sfm_one_cam_match(std::multimap<std::string, cv::Vec2i>& sfmDataMap, std::vector<sfmData>& sfmDatas, std::unordered_map<std::string, bool>& matchList, std::vector<camera::Ptr>& p_cams, std::mutex& lock, const int& index, const double& ratio) {
+    std::lock_guard<std::mutex> lockGuard(lock);
+    for(int i = 0; i < p_cams.size(); ++i) {
+        if(i != index) {
+            std::string searchStr = std::to_string(p_cams[index]->id) + "-" + std::to_string(p_cams[i]->id);
+            if(!matchList[searchStr]) {
+                //todo match
+//                int matchNum(0);
+//                sleep(3);
+//                p_cams[index]->matchMap.insert(std::make_pair(p_cams[i]->id, 0));
+//                p_cams[i]->matchMap.insert(std::make_pair(p_cams[index]->id, 0));
+                int matchNum = sfm_match_feature(sfmDataMap, sfmDatas, p_cams[index], p_cams[i], ratio);
+
+                std::cout << "View " << p_cams[index]->id << "-" << p_cams[i]->id << " Matched " << matchNum << " Points" << std::endl;
+                matchList[searchStr] = true;
+                searchStr = std::to_string(p_cams[i]->id) + "-" + std::to_string(p_cams[index]->id);
+                matchList[searchStr] = true;
+            }
+        }
+    }
+    p_cams[index]->isFinishedMatch = true;
+    for(int i = 0; i < p_cams.size(); ++i) {
+        if(i != index) {
+            if(p_cams[index]->matchMap.find(p_cams[i]->id) == p_cams[index]->matchMap.end()) {
+                p_cams[index]->isFinishedMatch = false;
+                break;
+            }
+        }
+    }
+}
+
 
 
 void sfm_reconstruct_initial_pair(std::multimap<std::string, cv::Vec2i>& sfmDataMap, std::vector<sfmData>& sfmDatas, int& numInliers, camera::Ptr& src, camera::Ptr& dst) {
@@ -343,10 +405,24 @@ void camera::setExtrinsic(const cv::Mat& _R, const cv::Mat& _T) {
 void camera::sfm_extract_feature_desc(double contrastThreshold, double edgeThreshold) {
 //    cv::Ptr<cv::Feature2D> detector = cv::xfeatures2d::SIFT::create(0, 3,\
                                                                     contrastThreshold, edgeThreshold,1.6);
-    cv::Ptr<cv::Feature2D> detector = cv::xfeatures2d::SURF::create();
-    detector->detectAndCompute(img, cv::noArray(), features, descs);
-    numPtsAll = features.size();
-    std::cout << "camera " << id << " extracted " << numPtsAll << " SIFT pts" << std::endl;
+    if(!isUseGpu) {
+        cv::Ptr<cv::Feature2D> detector = cv::xfeatures2d::SURF::create();
+        detector->detectAndCompute(img, cv::noArray(), features, descs);
+        numPtsAll = features.size();
+    }
+    else {
+        cv::cuda::SURF_CUDA surf;
+        cv::cuda::GpuMat featuresGPU;
+        cv::cuda::GpuMat tempDescs;
+        cv::Ptr<cv::Feature2D> detector = cv::xfeatures2d::SURF::create();
+        surf(imgGPU, cv::cuda::GpuMat(), featuresGPU, tempDescs);
+        numPtsAll = featuresGPU.cols;
+        surf.downloadKeypoints(featuresGPU, features);
+        detector->compute(img, features, descs);
+        //descsGPU.download(descs);
+        //std::cout << features.size() << " " << descs.cols << " " << descs.rows << std::endl;
+    }
+    std::cout << "camera " << id << " extracted " << numPtsAll << " SURF pts" << std::endl;
 }
 
 
